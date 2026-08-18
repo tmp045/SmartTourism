@@ -1,0 +1,52 @@
+/* Toàn bộ nền và font chữ */
+body {
+  background: url("../img/background.jpg") no-repeat center center fixed;
+  background-size: cover;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Navbar */
+.navbar-brand {
+  font-weight: bold;
+  color: #fd990d !important;
+}
+
+/* Logo trong Navbar */
+.navbar-logo {
+  height: 38px; /* 👈 chỉnh kích thước logo tại đây (35–45px là đẹp) */
+  width: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  margin-top: -2px; /* căn giữa logo theo chiều dọc */
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+/* Hiệu ứng hover nhẹ cho logo */
+.navbar-logo:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* Hiệu ứng hover cho thẻ card */
+.card:hover {
+  transform: translateY(-3px);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Tiêu đề chính */
+h1 {
+  color: #fd990d;
+}
+
+/* Nút chính */
+.btn-primary {
+  background-color: #fd990d;
+  border: none;
+}
+
+/* Hover cho nút */
+.btn-primary:hover {
+  background-color: #e68700;
+}
+
+

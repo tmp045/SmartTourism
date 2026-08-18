@@ -1,0 +1,405 @@
+{% extends "food/base.html" %}
+{% load static %}
+
+{% block title %}Kết quả tìm kiếm | Smart Tourism{% endblock %}
+
+{% block content %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+  body { background: #f8fafc; }
+
+  #map {
+    width: 100%;
+    height: 400px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+  }
+
+  .result-card {
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+    border: none;
+  }
+
+  .map-badge {
+    background: #ffffff;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.18);
+    white-space: nowrap;
+  }
+  .map-badge.price { color: #0d6efd; }
+  .map-badge.rating { color: #ffc107; }
+
+  .favorite-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(6px);
+  }
+
+  /* fix leaflet bị bootstrap/img ảnh hưởng */
+  .leaflet-container img {
+    max-width: none !important;
+    height: auto !important;
+  }
+
+  /* priority drag ngang */
+  .priority-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:nowrap;
+    overflow-x:auto;
+    padding:8px;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    background:#fff;
+  }
+
+  .priority-item{
+    flex:0 0 auto;
+    padding:10px 14px;
+    border:1px solid #e5e7eb;
+    border-radius:999px;
+    background:#f8fafc;
+    font-weight:600;
+    cursor:grab;
+    user-select:none;
+    white-space:nowrap;
+  }
+
+  .priority-item:active{ cursor:grabbing; }
+  .priority-ghost{ opacity:.5; }
+</style>
+
+<div class="container py-4">
+  <a href="{% url 'food:home' %}" class="mb-3 d-inline-block">&larr; Quay lại trang chủ</a>
+
+  <h2 class="mb-3">
+    Kết quả tìm kiếm cho: "<strong>{{ query }}</strong>"
+  </h2>
+
+  {% include "search/base_search_bar.html" %}
+
+  <div class="row mt-4">
+
+    <!-- MAP -->
+    <div class="col-md-4 mb-4">
+      <h5 class="mb-2">Bản đồ khu vực</h5>
+      <div id="map"></div>
+      <small class="text-muted d-block mt-1" id="map-note">Đang tải dữ liệu vị trí...</small>
+
+      <div class="btn-group w-100 mt-3" role="group" aria-label="Map filters">
+        <button type="button" class="btn btn-outline-success active" data-map-mode="open">Đang mở cửa</button>
+        <button type="button" class="btn btn-outline-primary" data-map-mode="price">Giá trung bình</button>
+        <button type="button" class="btn btn-outline-warning" data-map-mode="rating">Rating cao</button>
+      </div>
+    </div>
+
+    <!-- LIST -->
+    <div class="col-md-8">
+      <h5 class="mt-2">⚙️ Ưu tiên kết quả (kéo thả để sắp xếp)</h5>
+
+      <form id="priority-form" method="get" action="{% url 'search' %}" class="mb-3">
+        <input type="hidden" name="q" value="{{ query }}">
+
+        <input type="hidden" name="scope" value="{{ scope|default:'' }}">
+        <input type="hidden" name="province" value="{{ province|default:'' }}">
+        <input type="hidden" name="ward" value="{{ ward|default:'' }}">
+        <input type="hidden" name="lat" value="{{ user_lat|default:'' }}">
+        <input type="hidden" name="lng" value="{{ user_lng|default:'' }}">
+
+        <div id="priority-list" class="priority-row mb-3">
+          <div class="priority-item" data-key="rating">⭐ Rating cao</div>
+          <div class="priority-item" data-key="distance">📍 Gần nhất</div>
+          <div class="priority-item" data-key="price">💰 Giá thấp</div>
+          <div class="priority-item" data-key="popularity">🔥 Phổ biến</div>
+        </div>
+
+        <input type="hidden" name="pri1" id="pri1">
+        <input type="hidden" name="pri2" id="pri2">
+        <input type="hidden" name="pri3" id="pri3">
+
+        <button class="btn btn-primary" type="submit">Áp dụng ưu tiên</button>
+      </form>
+
+      {% if restaurant_results %}
+        <div class="row">
+          {% for r in restaurant_results %}
+            <div class="col-md-6 mb-3">
+              <div class="card result-card h-100 position-relative">
+
+                {% if r.image %}
+                  <img src="{{ r.image.url }}" class="card-img-top" style="height:160px; object-fit:cover;">
+                {% endif %}
+
+                <!-- ❤️ NÚT TIM -->
+                {% if user.is_authenticated %}
+                  <button type="button"
+                          class="favorite-btn position-absolute top-0 end-0 m-2 js-fav"
+                          data-id="{{ r.id }}"
+                          aria-label="Yêu thích">
+                    <i class="{% if favorite_ids and r.id in favorite_ids %}fa-solid{% else %}fa-regular{% endif %} fa-heart text-danger"></i>
+                  </button>
+                {% endif %}
+
+                <div class="card-body">
+                  <h5 class="card-title mb-1">{{ r.name }}</h5>
+                  <p class="text-muted small mb-1">{{ r.address }}</p>
+
+                  <p class="mb-1">
+                    ⭐ {{ r.rating|default:"N/A" }} &nbsp;
+                    {% if r.is_open_now %}
+                      <span class="badge bg-success">Đang mở cửa</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Đã đóng</span>
+                    {% endif %}
+                  </p>
+
+                  {% if scope == 'nearby' and r.distance_km != None %}
+                    <p class="small text-muted mb-1">📍 Cách bạn {{ r.distance_km }} km</p>
+                  {% endif %}
+
+                  {% if r.match_dishes %}
+                    <hr class="my-2">
+                    <p class="small fw-semibold mb-1">Món liên quan:</p>
+
+                    {% for d in r.match_dishes %}
+                      <div class="d-flex align-items-center mb-2">
+                        {% if d.image %}
+                          <img src="{{ d.image.url }}" alt="{{ d.name }}"
+                               style="width:42px;height:42px;object-fit:cover;border-radius:6px;">
+                        {% else %}
+                          <div style="width:42px;height:42px;border-radius:6px;background:#eee;"></div>
+                        {% endif %}
+                        <div class="ms-2">
+                          <div class="small fw-semibold">{{ d.name }}</div>
+                          <div class="small text-muted">{{ d.price }}₫</div>
+                        </div>
+                      </div>
+                    {% endfor %}
+
+                    <a href="{% url 'food:restaurant_detail' r.id %}#menu"
+                       class="btn btn-sm btn-outline-secondary w-100">
+                      Xem thêm menu
+                    </a>
+                  {% endif %}
+
+                  <a href="{% url 'food:restaurant_detail' r.id %}" class="btn btn-sm btn-outline-primary mt-2 w-100">
+                    Xem chi tiết
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="alert alert-info">Không tìm thấy nhà hàng nào phù hợp với tìm kiếm của bạn.</div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+
+<script>
+  // ===== MAP =====
+  const USER_LAT = parseFloat("{{ user_lat|default:'' }}");
+  const USER_LNG = parseFloat("{{ user_lng|default:'' }}");
+
+  const restaurants = JSON.parse('{{ restaurant_map_json|escapejs }}' || '[]');
+  console.log("MAP JSON restaurants =", restaurants);
+
+  const map = L.map('map').setView([10.77, 106.69], 13);
+  window.addEventListener("load", () => {
+  setTimeout(() => map.invalidateSize(), 200);
+  });
+  const note = document.getElementById('map-note');
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  const markersLayer = L.layerGroup().addTo(map);
+
+  function renderMarkers(mode) {
+    markersLayer.clearLayers();
+    const bounds = [];
+
+    if (!restaurants.length) {
+      note.textContent = 'Không có dữ liệu vị trí nhà hàng.';
+      return;
+    }
+
+    restaurants.forEach(r => {
+      if (!r.lat || !r.lng) return;
+      if (mode === 'open' && !r.is_open) return;
+      if (mode === 'rating' && (!r.rating || r.rating < 4)) return;
+
+      let icon = null;
+      if (mode === 'price' && r.price != null && Number(r.price) > 0) {
+        icon = L.divIcon({
+          className: '',
+          html: `<div class="map-badge price">${r.price}k</div>`,
+          iconSize: [40, 24],
+          iconAnchor: [20, 12]
+        });
+      } else if (mode === 'rating' && r.rating) {
+        const ratingText = (typeof r.rating === "number") ? r.rating.toFixed(1) : r.rating;
+        icon = L.divIcon({
+          className: '',
+          html: `<div class="map-badge rating">${ratingText}★</div>`,
+          iconSize: [40, 24],
+          iconAnchor: [20, 12]
+        });
+      }
+
+      const marker = icon ? L.marker([r.lat, r.lng], { icon }) : L.marker([r.lat, r.lng]);
+
+      const hasUserPos = Number.isFinite(USER_LAT) && Number.isFinite(USER_LNG);
+
+    const gmapsUrl = hasUserPos
+      ? `https://www.google.com/maps/dir/?api=1&origin=${USER_LAT},${USER_LNG}&destination=${r.lat},${r.lng}&travelmode=driving`
+      : `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`;
+
+    const popupHtml = `
+      <div style="width: 200px;">
+        <b>${r.name}</b><br/>
+        <small>${r.address || ""}</small>
+        <hr class="my-1"/>
+
+        🕒 <b>Trạng thái:</b> ${r.is_open ? "<span style='color:green;'>Đang mở</span>" : "<span style='color:red;'>Đã đóng</span>"}<br/>
+        💰 <b>Giá trung bình:</b> ${r.price ? r.price + "k" : "Chưa có"}<br/>
+        ⭐ <b>Rating:</b> ${r.rating || "N/A"} / 5<br/>
+
+        <div class="d-grid gap-1 mt-2">
+          <a href="${gmapsUrl}" target="_blank"
+          style="
+            display:inline-block;
+            width:100%;
+            margin-top:8px;
+            padding:8px 10px;
+            border-radius:8px;
+            background:#0d6efd;
+            color:#fff !important;
+            text-decoration:none !important;
+            font-weight:600;
+            text-align:center;
+          ">
+          🧭 Dẫn đường (Google Maps)
+        </a>
+        </div>
+
+        ${r.image ? `<img src="${r.image}" style="width:100%; border-radius:6px; margin-top:6px;">` : ""}
+      </div>
+      `;
+
+      marker.bindPopup(popupHtml);
+      marker.addTo(markersLayer);
+      bounds.push([r.lat, r.lng]);
+    });
+
+    if (bounds.length) {
+      map.fitBounds(bounds, { padding: [20, 20] });
+    } else {
+      note.textContent = 'Không có nhà hàng nào phù hợp với bộ lọc này.';
+    }
+  }
+
+  document.querySelectorAll('[data-map-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-map-mode]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderMarkers(btn.getAttribute('data-map-mode'));
+    });
+  });
+
+  renderMarkers('open');
+
+  // ===== SORTABLE =====
+ const list = document.getElementById("priority-list");
+
+  if (list) {
+    new Sortable(list, {
+      animation: 150,
+      direction: "horizontal",
+      ghostClass: "priority-ghost"
+    });
+
+    document.getElementById("priority-form").addEventListener("submit", () => {
+      const items = list.querySelectorAll(".priority-item");
+      const pri = [];
+
+      items.forEach(el => pri.push(el.getAttribute("data-key")));
+
+      document.getElementById("pri1").value = pri[0] || "";
+      document.getElementById("pri2").value = pri[1] || "";
+      document.getElementById("pri3").value = pri[2] || "";
+    });
+  }
+
+
+  // ===== FAVORITE (TIM) =====
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  document.querySelectorAll(".js-fav").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const rid = btn.dataset.id;
+      const icon = btn.querySelector("i");
+
+      const res = await fetch(`/restaurant/${rid}/favorite/`, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+      });
+
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.is_favorite) {
+        icon.classList.remove("fa-regular");
+        icon.classList.add("fa-solid");
+      } else {
+        icon.classList.remove("fa-solid");
+        icon.classList.add("fa-regular");
+      }
+    });
+  });
+</script>
+{% endblock %}

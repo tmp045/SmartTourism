@@ -1,0 +1,243 @@
+{% load static %}
+
+<form method="get" action="{% url 'search' %}" id="main-search-form" class="mb-3">
+  <div class="mb-2 position-relative">
+    <input
+      type="text"
+      name="q"
+      id="search-input"
+      class="form-control"
+      value="{{ query|default:'' }}"
+      placeholder="Tìm món / quán..."
+      autocomplete="off"
+    />
+    <ul id="suggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></ul>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+
+    <!-- 🔥 NÚT VỊ TRÍ (THAY CHO SELECT SCOPE TO ĐÙNG) -->
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary dropdown-toggle d-flex align-items-center"
+              type="button"
+              id="locationDropdown"
+              data-bs-toggle="dropdown"
+              aria-expanded="false">
+        <img src="{% static 'food/img/location.png' %}"
+          alt="Vị trí"
+          style="width:24px;height:24px;">
+        <span class="ms-1" id="location-label">
+          {% if scope == 'nearby' %}
+            Gần tôi (GPS)
+          {% elif scope == 'province' %}
+            Tỉnh / phường
+          {% else %}
+            Lọc theo vị trí
+          {% endif %}
+        </span>
+      </button>
+      <ul class="dropdown-menu" aria-labelledby="locationDropdown">
+        <li>
+          <button class="dropdown-item location-scope-option" type="button" data-scope="">
+            Không lọc vị trí
+          </button>
+        </li>
+        <li>
+          <button class="dropdown-item location-scope-option" type="button" data-scope="nearby">
+            Gần tôi (dùng GPS)
+          </button>
+        </li>
+        <li>
+          <button class="dropdown-item location-scope-option" type="button" data-scope="province">
+            Chọn tỉnh / phường
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- 👀 SELECT SCOPE ẨN (GIỮ ĐỂ BACKEND HOẠT ĐỘNG NHƯ CŨ) -->
+    <select name="scope" id="scope-select" class="form-select d-none">
+      <option value=""         {% if not scope %}selected{% endif %}>Không lọc vị trí</option>
+      <option value="nearby"   {% if scope == 'nearby' %}selected{% endif %}>Gần đây (GPS)</option>
+      <option value="province" {% if scope == 'province' %}selected{% endif %}>Tỉnh/Thành</option>
+    </select>
+
+    <!-- KHU VỰC CHỌN TỈNH / PHƯỜNG (CHỈ HIỆN KHI scope = province) -->
+    <div id="province-ward-wrapper"
+         class="d-flex flex-wrap gap-2 align-items-center
+                {% if scope != 'province' %}d-none{% endif %}">
+
+      <select name="province" id="province-select" class="form-select" style="max-width: 200px;"
+              {% if scope != 'province' %}disabled{% endif %}>
+        <option value="">Chọn tỉnh/thành</option>
+        {% if provinces %}
+          {% for p in provinces %}
+            <option value="{{ p.code }}" {% if province == p.code %}selected{% endif %}>
+              {{ p.name }}
+            </option>
+          {% endfor %}
+        {% endif %}
+      </select>
+
+      <select name="ward" id="ward-select" class="form-select" style="max-width: 200px;"
+              {% if scope != 'province' %}disabled{% endif %}>
+        <option value="">Chọn phường/xã</option>
+        {# sẽ được fill bằng JS khi chọn tỉnh #}
+      </select>
+    </div>
+
+    <!-- ĐẶC SẢN -->
+    <div class="form-check ms-2">
+      <input class="form-check-input" type="checkbox" name="specialty" value="1"
+             id="specialty-check" {% if specialty %}checked{% endif %}>
+      <label class="form-check-label" for="specialty-check">
+        Đặc sản
+      </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary ms-auto">
+      Tìm kiếm
+    </button>
+  </div>
+</form>
+
+<script>
+// AUTOCOMPLETE
+const input = document.getElementById("search-input");
+const suggestionsBox = document.getElementById("suggestions");
+
+if (input && suggestionsBox) {
+  input.addEventListener("input", function () {
+    const q = this.value.trim();
+    if (!q) {
+      suggestionsBox.innerHTML = "";
+      return;
+    }
+
+    fetch("{% url 'autocomplete' %}?q=" + encodeURIComponent(q))
+      .then(res => res.json())
+      .then(data => {
+        suggestionsBox.innerHTML = "";
+        data.suggestions.forEach(text => {
+          const li = document.createElement("li");
+          li.className = "list-group-item list-group-item-action";
+          li.textContent = text;
+          li.onclick = () => {
+            input.value = text;
+            suggestionsBox.innerHTML = "";
+          };
+          suggestionsBox.appendChild(li);
+        });
+      })
+      .catch(() => {
+        suggestionsBox.innerHTML = "";
+      });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!suggestionsBox.contains(e.target) && e.target !== input) {
+      suggestionsBox.innerHTML = "";
+    }
+  });
+}
+
+// VỊ TRÍ
+const scopeSelect          = document.getElementById("scope-select");      // select ẩn
+const provinceSelect       = document.getElementById("province-select");
+const wardSelect           = document.getElementById("ward-select");
+const form                 = document.getElementById("main-search-form");
+const locationLabel        = document.getElementById("location-label");
+const provinceWardWrapper  = document.getElementById("province-ward-wrapper");
+const scopeButtons         = document.querySelectorAll(".location-scope-option");
+
+// hàm update UI theo scope hiện tại
+function applyScopeUI(scope) {
+  if (!scopeSelect || !provinceSelect || !wardSelect || !provinceWardWrapper) return;
+
+  // cập nhật select ẩn (để gửi lên backend)
+  scopeSelect.value = scope;
+
+  if (scope === "nearby") {
+    // ẩn phần tỉnh/phường
+    provinceWardWrapper.classList.add("d-none");
+    provinceSelect.disabled = true;
+    wardSelect.disabled = true;
+
+    locationLabel.textContent = "Gần tôi (GPS)";
+
+    // xin GPS
+    if (navigator.geolocation && form) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        let latInput = document.querySelector("input[name='lat']");
+        let lngInput = document.querySelector("input[name='lng']");
+
+        if (!latInput) {
+          latInput = document.createElement("input");
+          latInput.type = "hidden";
+          latInput.name = "lat";
+          form.appendChild(latInput);
+        }
+        if (!lngInput) {
+          lngInput = document.createElement("input");
+          lngInput.type = "hidden";
+          lngInput.name = "lng";
+          form.appendChild(lngInput);
+        }
+
+        latInput.value = pos.coords.latitude;
+        lngInput.value = pos.coords.longitude;
+      });
+    }
+  } else if (scope === "province") {
+    // hiện phần tỉnh/phường
+    provinceWardWrapper.classList.remove("d-none");
+    provinceSelect.disabled = false;
+    wardSelect.disabled = false;
+    locationLabel.textContent = "Tỉnh / phường";
+  } else {
+    // không lọc vị trí
+    provinceWardWrapper.classList.add("d-none");
+    provinceSelect.disabled = true;
+    wardSelect.disabled = true;
+    locationLabel.textContent = "Lọc theo vị trí";
+  }
+}
+
+// gắn event cho 3 option trong dropdown 📍
+if (scopeButtons && scopeButtons.length > 0) {
+  scopeButtons.forEach(btn => {
+    btn.addEventListener("click", function () {
+      const s = this.dataset.scope || "";
+      applyScopeUI(s);
+    });
+  });
+}
+
+// 🧠 LOAD WARDS (phường/xã) khi chọn TỈNH
+if (provinceSelect && wardSelect) {
+  provinceSelect.addEventListener("change", function () {
+    const provinceCode = this.value;
+
+    wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
+    if (!provinceCode) return;
+
+    fetch("{% url 'get_wards' %}?province=" + encodeURIComponent(provinceCode))
+      .then(res => res.json())
+      .then(data => {
+        wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
+        data.wards.forEach(w => {
+          const opt = document.createElement("option");
+          opt.value = w.code;
+          opt.textContent = w.name;
+          wardSelect.appendChild(opt);
+        });
+      })
+      .catch(err => {
+        console.error("LOAD WARDS ERROR:", err);
+      });
+  });
+}
+
+// khi load trang lần đầu, sync lại UI theo scope từ backend (nearby/province/none)
+applyScopeUI("{{ scope|default:'' }}");
+</script>

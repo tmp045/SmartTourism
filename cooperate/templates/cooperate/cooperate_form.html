@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="vi">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <title>Hợp tác cùng FoodUS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .time-slot {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+        }
+        .btn-remove-slot {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .btn-add-slot {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .btn-add-slot:hover {
+            background-color: #218838;
+        }
+        .btn-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #6c757d;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+        }
+        .btn-home:hover {
+            background-color: #5a6268;
+            color: white;
+        }
+        .image-preview {
+            max-width: 300px;
+            max-height: 300px;
+            margin-top: 10px;
+            border-radius: 8px;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<!-- Nút quay về trang chủ -->
+<a href="{% url 'food:home' %}" class="btn btn-home">
+    <i class="fas fa-arrow-left"></i> Quay về trang chủ
+</a>
+
+<div class="container mt-5">
+    <div class="card shadow p-4">
+        <h2 class="text-center mb-4" style="color: #fd990d;">Hợp tác cùng FoodUS</h2>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label class="form-label">{{ form.restaurant_name.label }}</label>
+                {{ form.restaurant_name }}
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">{{ form.phone.label }}</label>
+                {{ form.phone }}
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">{{ form.email.label }}</label>
+                {{ form.email }}
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">{{ form.address.label }}</label>
+                {{ form.address }}
+            </div>
+
+            <!-- ĐÃ CHÈN THÊM 2 FIELD -->
+            <div class="mb-3">
+                <label class="form-label">Tỉnh/Thành</label>
+                {{ form.province }}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Phường/Xã</label>
+                {{ form.ward }}
+            </div>
+            <!-- TỌA ĐỘ + MAP -->
+            <div class="mb-3">
+            <label class="form-label">Tọa độ (click trên map để chọn)</label>
+
+            <div id="map" style="height: 380px; border-radius: 10px; border: 1px solid #ddd;"></div>
+
+            <div class="row mt-2">
+                <div class="col-md-6">
+                <label class="form-label small mb-1">Latitude</label>
+                <input type="text" name="latitude" id="id_latitude" class="form-control" readonly>
+                </div>
+                <div class="col-md-6">
+                <label class="form-label small mb-1">Longitude</label>
+                <input type="text" name="longitude" id="id_longitude" class="form-control" readonly>
+                </div>
+            </div>
+            <div class="text-muted small mt-2">
+                 <!--Chọn Tỉnh/Phường trước, map sẽ bay tới khu vực. Sau đó click để chốt tọa độ. -->
+            </div>
+            </div>
+
+            <!-- Thời gian hoạt động -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">Thời gian hoạt động</label>
+                <div id="time-slots-container">
+                    <!-- Khung giờ đầu tiên -->
+                    <div class="time-slot" data-slot-id="0">
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Giờ mở</label>
+                                <select name="opening_time_0" class="form-select">
+                                    <option value="">-- Chọn giờ --</option>
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                    <option value="13:00">13:00</option>
+                                    <option value="14:00">14:00</option>
+                                    <option value="15:00">15:00</option>
+                                    <option value="16:00">16:00</option>
+                                    <option value="17:00">17:00</option>
+                                    <option value="18:00">18:00</option>
+                                    <option value="19:00">19:00</option>
+                                    <option value="20:00">20:00</option>
+                                    <option value="21:00">21:00</option>
+                                    <option value="22:00">22:00</option>
+                                    <option value="23:00">23:00</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label class="form-label">Giờ đóng</label>
+                                <select name="closing_time_0" class="form-select">
+                                    <option value="">-- Chọn giờ --</option>
+                                    <option value="00:00">00:00</option>
+                                    <option value="01:00">01:00</option>
+                                    <option value="02:00">02:00</option>
+                                    <option value="03:00">03:00</option>
+                                    <option value="04:00">04:00</option>
+                                    <option value="05:00">05:00</option>
+                                    <option value="06:00">06:00</option>
+                                    <option value="07:00">07:00</option>
+                                    <option value="08:00">08:00</option>
+                                    <option value="09:00">09:00</option>
+                                    <option value="10:00">10:00</option>
+                                    <option value="11:00">11:00</option>
+                                    <option value="12:00">12:00</option>
+                                    <option value="13:00">13:00</option>
+                                    <option value="14:00">14:00</option>
+                                    <option value="15:00">15:00</option>
+                                    <option value="16:00">16:00</option>
+                                    <option value="17:00">17:00</option>
+                                    <option value="18:00">18:00</option>
+                                    <option value="19:00">19:00</option>
+                                    <option value="20:00">20:00</option>
+                                    <option value="21:00">21:00</option>
+                                    <option value="22:00">22:00</option>
+                                    <option value="23:00">23:00</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nút thêm khung giờ -->
+                <button type="button" class="btn btn-add-slot" onclick="addTimeSlot()">
+                    <i class="fas fa-plus"></i> Thêm khung giờ
+                </button>
+
+                <div class="text-muted small mt-2">
+                    💡 Nếu quán có giờ nghỉ trưa, hãy thêm khung giờ thứ 2 (VD: Khung 1: 07:00-11:00, Khung 2: 13:00-21:00)
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">{{ form.description.label }}</label>
+                {{ form.description }}
+            </div>
+
+            <!-- Thêm hình ảnh quán -->
+            <div class="mb-3">
+                <label class="form-label fw-bold">Hình ảnh quán</label>
+                <input type="file" name="image" id="imageInput" class="form-control" accept="image/*" onchange="previewImage(event)">
+                <img id="imagePreview" class="image-preview" alt="Preview">
+                <div class="text-muted small mt-2">
+                    📸 Tải lên hình ảnh đại diện cho quán của bạn (JPG, PNG)
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="submit" class="btn px-4" style="background-color:#fd990d; border-color:#fd990d; color:white;">
+                    Gửi thông tin hợp tác
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let slotCounter = 1;
+
+function getHourOptions() {
+    let options = '<option value="">-- Chọn giờ --</option>';
+    for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, '0') + ':00';
+        options += `<option value="${hour}">${hour}</option>`;
+    }
+    return options;
+}
+
+function addTimeSlot() {
+    const container = document.getElementById('time-slots-container');
+    
+    const newSlot = document.createElement('div');
+    newSlot.className = 'time-slot';
+    newSlot.setAttribute('data-slot-id', slotCounter);
+    newSlot.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold">Khung giờ ${slotCounter + 1}</span>
+            <button type="button" class="btn btn-remove-slot" onclick="removeTimeSlot(this)">
+                <i class="fas fa-times"></i> Xóa
+            </button>
+        </div>
+        <div class="row">
+            <div class="col-md-6 mb-2">
+                <label class="form-label">Giờ mở</label>
+                <select name="opening_time_${slotCounter}" class="form-select">
+                    ${getHourOptions()}
+                </select>
+            </div>
+            <div class="col-md-6 mb-2">
+                <label class="form-label">Giờ đóng</label>
+                <select name="closing_time_${slotCounter}" class="form-select">
+                    ${getHourOptions()}
+                </select>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(newSlot);
+    slotCounter++;
+}
+
+function removeTimeSlot(button) {
+    const slot = button.closest('.time-slot');
+    slot.remove();
+}
+
+function previewImage(event) {
+    const input = event.target;
+    const preview = document.getElementById('imagePreview');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+// ====================== MAP + PICK COORDINATES ======================
+const provinceSelect = document.getElementById("id_province");
+const wardSelect = document.getElementById("id_ward");
+const addressInput = document.querySelector('input[name="address"], textarea[name="address"]');
+
+const latInput = document.getElementById("id_latitude");
+const lngInput = document.getElementById("id_longitude");
+
+let map, marker;
+
+function initMap() {
+  // mặc định HCM (bạn đổi nếu muốn)
+  map = L.map("map").setView([10.8231, 106.6297], 12);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  // click map -> set marker + fill lat/lng
+  map.on("click", function (e) {
+    setMarker(e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function setMarker(lat, lng) {
+  if (!marker) {
+    marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+    marker.on("dragend", function () {
+      const pos = marker.getLatLng();
+      latInput.value = pos.lat.toFixed(6);
+      lngInput.value = pos.lng.toFixed(6);
+    });
+  } else {
+    marker.setLatLng([lat, lng]);
+  }
+  latInput.value = lat.toFixed(6);
+  lngInput.value = lng.toFixed(6);
+}
+
+async function geocodeToMap(query) {
+  if (!query) return;
+
+  // Nominatim (OpenStreetMap) - free
+  const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=vn&q=" + encodeURIComponent(query);
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "Accept": "application/json"
+        // Note: Nominatim khuyến nghị set User-Agent ở server,
+        // nhưng browser vẫn chạy được.
+      }
+    });
+    const data = await res.json();
+
+    if (data && data.length > 0) {
+      const lat = parseFloat(data[0].lat);
+      const lng = parseFloat(data[0].lon);
+
+      map.setView([lat, lng], 15);
+      // nếu user chưa chọn tọa độ thì đặt marker tạm ở trung tâm
+      if (!latInput.value || !lngInput.value) {
+        setMarker(lat, lng);
+      }
+    }
+  } catch (err) {
+    console.log("Geocode error:", err);
+  }
+}
+
+function buildLocationQuery() {
+  // Lấy text hiển thị của option (không lấy value id)
+  const provinceText = provinceSelect?.selectedOptions?.[0]?.text?.trim() || "";
+  const wardText = wardSelect?.selectedOptions?.[0]?.text?.trim() || "";
+  const addrText = (addressInput && addressInput.value) ? addressInput.value.trim() : "";
+
+  // Ưu tiên: address + ward + province để chính xác hơn
+  // Ví dụ: "12 Nguyễn Trãi, Phường 1, TP Hồ Chí Minh, Vietnam"
+  let q = "";
+  if (addrText) q += addrText + ", ";
+  if (wardText) q += wardText + ", ";
+  if (provinceText) q += provinceText + ", ";
+  q += "Vietnam";
+
+  return q;
+}
+
+function onLocationChanged() {
+  const q = buildLocationQuery();
+  geocodeToMap(q);
+}
+
+// init
+initMap();
+
+// events
+if (provinceSelect) provinceSelect.addEventListener("change", onLocationChanged);
+if (wardSelect) wardSelect.addEventListener("change", onLocationChanged);
+if (addressInput) addressInput.addEventListener("blur", onLocationChanged);
+
+</script>
+<script>
+const provinceSelect = document.getElementById("province-select");
+const wardSelect = document.getElementById("ward-select");
+
+if (provinceSelect && wardSelect) {
+  provinceSelect.addEventListener("change", function () {
+    const provinceCode = this.value;
+
+    wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
+    if (!provinceCode) return;
+
+    fetch("{% url 'get_wards' %}?province=" + encodeURIComponent(provinceCode))
+      .then(res => res.json())
+      .then(data => {
+        wardSelect.innerHTML = '<option value="">Chọn phường/xã</option>';
+        data.wards.forEach(w => {
+          const opt = document.createElement("option");
+          opt.value = w.code;
+          opt.textContent = w.name;
+          wardSelect.appendChild(opt);
+        });
+      })
+      .catch(err => console.error("LOAD WARDS ERROR:", err));
+  });
+}
+</script>
+</body>
+</html>

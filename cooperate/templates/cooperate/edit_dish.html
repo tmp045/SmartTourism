@@ -1,0 +1,117 @@
+{% extends 'food/home.html' %}
+
+{% block title %}Sửa Món ăn - {{ dish.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h2 class="text-primary">
+                    <i class="fas fa-edit"></i> Sửa Món ăn
+                </h2>
+                <p class="text-muted">Tên món ăn: <strong>{{ dish.name }}</strong></p>
+            </div>
+
+            <!-- Card form -->
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <strong><i class="fas fa-exclamation-triangle"></i> Có lỗi trong form:</strong>
+                            <ul class="mb-0 mt-2">
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ field }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="form-group mb-4">
+                            <label for="id_name" class="form-label">
+                                <i class="fas fa-utensils"></i> <strong>Tên món ăn:</strong>
+                            </label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                                <div class="text-danger mt-1">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="id_description" class="form-label">
+                                <i class="fas fa-align-left"></i> <strong>Mô tả:</strong>
+                            </label>
+                            {{ form.description }}
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="id_price" class="form-label">
+                                <i class="fas fa-tag"></i> <strong>Giá (VNĐ):</strong>
+                            </label>
+                            {{ form.price }}
+                            {% if form.price.errors %}
+                                <div class="text-danger mt-1">{{ form.price.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="id_image" class="form-label">
+                                <i class="fas fa-image"></i> <strong>Hình ảnh:</strong>
+                            </label>
+                            {% if dish.image %}
+                                <div class="mb-2">
+                                    <img src="{{ dish.image.url }}" alt="{{ dish.name }}" 
+                                         class="img-thumbnail" style="max-height: 150px;">
+                                    <p class="text-muted small mt-1">Ảnh hiện tại</p>
+                                </div>
+                            {% endif %}
+                            {{ form.image }}
+                            <small class="form-text text-muted">Để trống nếu không muốn thay đổi ảnh</small>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <label class="form-check-label" for="id_is_available">
+                                {{ form.is_available }}
+                                <strong>Món ăn còn hàng</strong>
+                            </label>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex gap-2 justify-content-end">
+                            <a href="{% url 'cooperate:restaurant_dashboard' restaurant_id %}" 
+                               class="btn btn-secondary btn-lg">
+                                <i class="fas fa-times"></i> Hủy
+                            </a>
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="fas fa-save"></i> Cập nhật Món ăn
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .gap-2 {
+        gap: 0.5rem;
+    }
+</style>
+{% endblock %}

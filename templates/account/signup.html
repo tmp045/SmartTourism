@@ -1,0 +1,314 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up | FoodUS</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+body {
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    margin: 0;
+}
+.left-side {
+    padding: 60px 80px;
+    height: 100vh;
+    overflow-y: auto;
+}
+.logo-box {
+    width: 350px;
+    height: 150px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    padding-left: 2cm;
+    background: transparent;
+    margin-bottom: 30px;
+}
+.logo {
+    width: 250px;
+    height: auto;
+}
+.form-title {
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+}
+.input-box {
+    background: #f3edff;
+    border-radius: 10px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+.input-box i {
+    color: #999;
+    width: 20px;
+}
+.input-box input {
+    border: none;
+    background: transparent;
+    width: 100%;
+    margin-left: 10px;
+    outline: none;
+}
+.btn-signup {
+    background-color: #6c757d;
+    color: white;
+    padding: 12px 40px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 500;
+    width: 100%;
+    margin-bottom: 15px;
+}
+.btn-signup:hover {
+    background-color: #5a6268;
+}
+.social-login {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+.social-btn-new {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 16px;
+    border-radius: 50px;
+    border: 1px solid #ddd;
+    background: white;
+    text-decoration: none;
+    color: #333;
+    font-weight: 600;
+    font-size: 15px;
+    transition: all 0.3s ease;
+}
+.social-btn-new:hover {
+    background: #f8f9fa;
+    border-color: #bbb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.social-icon {
+    position: absolute;
+    left: 16px;
+    width: 24px;
+    height: 24px;
+}
+.social-btn-new span {
+    flex: 1;
+    text-align: center;
+}
+.right-side {
+    background: #6c757d;
+    height: 100vh;
+    color: white;
+    text-align: center;
+    padding-top: 50px;
+    position: relative;
+}
+.avatar {
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: #e2e2e2;
+    margin: 100px auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    color: #999;
+}
+.small-btn {
+    background: white;
+    color: #000;
+    padding: 12px 25px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 500;
+    display: inline-block;
+    transition: all 0.3s;
+}
+.small-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+}
+.right-side p.contact {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    font-size: 16px;
+}
+.text-danger {
+    font-weight: 500;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 5px;
+    background: #f8d7da;
+    color: #721c24;
+    font-size: 14px;
+}
+.login-link {
+    text-align: center;
+    margin-top: 20px;
+    color: #666;
+}
+.login-link a {
+    color: #6c757d;
+    text-decoration: none;
+    font-weight: 500;
+}
+.login-link a:hover {
+    text-decoration: underline;
+}
+.divider-container {
+    position: relative;
+    text-align: center;
+    margin: 30px 0 20px 0;
+}
+.divider-container::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 100%;
+    height: 1px;
+    background: #ddd;
+}
+.divider-text {
+    position: relative;
+    display: inline-block;
+    padding: 0 15px;
+    background: white;
+    color: #999;
+    font-size: 14px;
+    z-index: 1;
+}
+</style>
+</head>
+<body>
+
+<div class="row g-0">
+    <!-- LEFT SIDE -->
+    <div class="col-md-7 left-side">
+        <div class="logo-box">
+            <img src="{% static 'food/img/logo.jpg' %}" class="logo" alt="Logo">
+        </div>
+
+        <h2 class="form-title">Create Account</h2>
+
+        <!-- Django Allauth Form -->
+        <form method="POST" action="{% url 'account_signup' %}">
+            {% csrf_token %}
+            
+            {% if form.non_field_errors %}
+                <div class="text-danger">
+                    {% for error in form.non_field_errors %}
+                        {{ error }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <div class="input-box">
+                <i class="fas fa-envelope"></i>
+                <input type="email" name="email" placeholder="Email" required
+                       value="{{ form.email.value|default:'' }}">
+            </div>
+            {% if form.email.errors %}
+                <div class="text-danger">{{ form.email.errors.0 }}</div>
+            {% endif %}
+
+            <div class="input-box">
+                <i class="fas fa-user"></i>
+                <input type="text" name="username" placeholder="Username" required
+                       value="{{ form.username.value|default:'' }}">
+            </div>
+            {% if form.username.errors %}
+                <div class="text-danger">{{ form.username.errors.0 }}</div>
+            {% endif %}
+
+            <div class="input-box">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password1" placeholder="Password" required>
+            </div>
+            {% if form.password1.errors %}
+                <div class="text-danger">{{ form.password1.errors.0 }}</div>
+            {% endif %}
+
+            <div class="input-box">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password2" placeholder="Confirm Password" required>
+            </div>
+            {% if form.password2.errors %}
+                <div class="text-danger">{{ form.password2.errors.0 }}</div>
+            {% endif %}
+
+            <button type="submit" class="btn-signup">Sign Up</button>
+        </form>
+
+        <!-- Social Login Divider -->
+        <div class="divider-container">
+            <span class="divider-text">OR</span>
+        </div>
+
+        <!-- Social Login Buttons -->
+        <div class="social-login">
+            <a href="{% provider_login_url 'google' %}" class="social-btn-new">
+                <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path>
+                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path>
+                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path>
+                </svg>
+                <span>Sign up with Google</span>
+            </a>
+
+            <a href="{% provider_login_url 'twitter_oauth2' %}" class="social-btn-new">
+                <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50">
+                    <path d="M 5.9199219 6 L 20.582031 27.375 L 6.2304688 44 L 9.4101562 44 L 21.986328 29.421875 L 31.986328 44 L 44 44 L 28.681641 21.669922 L 42.199219 6 L 39.029297 6 L 27.275391 19.617188 L 17.933594 6 L 5.9199219 6 z M 9.7167969 8 L 16.880859 8 L 40.203125 42 L 33.039062 42 L 9.7167969 8 z"></path>
+                </svg>
+                <span>Sign up with X</span>
+            </a>
+
+            <a href="{% provider_login_url 'facebook' %}" class="social-btn-new">
+                <svg class="social-icon" xmlns="http://www.w3.org/2000/svg" fill="#1877f2" viewBox="0 0 24 24">
+                    <path d="M22 12.07C22 6.48 17.52 2 12 2S2 6.48 2 12.07c0 5.02 3.66 9.18 8.44 9.93v-7.03h-2.5v-2.9h2.5V9.41c0-2.46 1.49-3.82 3.74-3.82 1.08 0 2.2.19 2.2.19v2.42h-1.24c-1.22 0-1.6.76-1.6 1.54v1.84h2.72l-.44 2.9h-2.28v7.03c4.78-.75 8.44-4.91 8.44-9.93z"/>
+                </svg>
+                <span>Sign up with Facebook</span>
+            </a>
+        </div>
+
+        <div class="login-link">
+            Already have an account? <a href="{% url 'account_login' %}">Login</a>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <div class="col-md-5 right-side">
+        <div class="d-flex justify-content-around px-5">
+            <a href="/" class="small-btn">Home Page</a>
+            <a href="/cooperate/" class="small-btn">Cooperate with us</a>
+        </div>
+
+        <div class="avatar">
+            <i class="fas fa-user-plus"></i>
+        </div>
+
+        <p class="contact">Contact: 0985047850</p>
+    </div>
+</div>
+
+</body>
+</html>

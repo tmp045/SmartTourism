@@ -1,0 +1,282 @@
+{% load static %}
+<!-- HERO SECTION WITH SEARCH -->
+<div class="relative w-full h-[500px] md:h-[600px] bg-gray-900 overflow-hidden">
+    <!-- Background Image -->
+    <div class="absolute inset-0 bg-cover bg-center opacity-70" 
+         style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop')"></div>
+    
+    <!-- Gradient Overlay -->
+    <div class="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent"></div>
+
+    <!-- Content -->
+    <div class="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 drop-shadow-md">
+            Thưởng thức món ngon <br/> chuẩn vị Việt
+        </h1>
+                            
+        <div class="w-full max-w-3xl relative">
+            <form action="{% url 'search' %}" method="GET" id="main-search-form" class="bg-white rounded-3xl shadow-2xl p-4">
+                <!-- Search Input với Autocomplete -->
+                <div class="relative mb-4">
+                    <div class="flex items-center bg-gray-50 rounded-full px-4 py-3">
+                        <svg class="text-gray-400 w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input type="text" 
+                               name="q" 
+                               id="search-input"
+                               placeholder="Tìm món ăn, nhà hàng..." 
+                               value="{{ query|default:'' }}"
+                               autocomplete="off"
+                               class="flex-1 px-4 outline-none text-gray-700 bg-transparent">
+                    </div>
+                    <!-- Autocomplete Suggestions -->
+                    <ul id="suggestions" class="absolute w-full mt-2 bg-white rounded-2xl shadow-xl overflow-hidden z-50 hidden"></ul>
+                </div>
+
+                <!-- Filters Row -->
+                <div class="flex flex-wrap items-center gap-3 mb-4">
+                    <!-- Location Filter -->
+                    <div class="relative">
+                        <button type="button" 
+                                id="locationDropdownBtn"
+                                class="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 transition-colors">
+                            <svg class="w-5 h-5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <span id="location-label">
+                                {% if scope == 'nearby' %}Gần tôi
+                                {% elif scope == 'province' %}Tỉnh/Thành
+                                {% else %}Vị trí{% endif %}
+                            </span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        
+                        <!-- Location Dropdown -->
+                        <div id="locationDropdown" class="absolute top-full left-0 mt-2 w-56 bg-white rounded-2xl shadow-xl overflow-hidden z-50 hidden">
+                            <button type="button" class="location-scope-option w-full text-left px-4 py-3 hover:bg-gray-50 text-sm" data-scope="">
+                                Tất cả vị trí
+                            </button>
+                            <button type="button" class="location-scope-option w-full text-left px-4 py-3 hover:bg-gray-50 text-sm" data-scope="nearby">
+                                🎯 Gần tôi (GPS)
+                            </button>
+                            <button type="button" class="location-scope-option w-full text-left px-4 py-3 hover:bg-gray-50 text-sm" data-scope="province">
+                                🏙️ Chọn tỉnh/thành
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Hidden scope select -->
+                    <select name="scope" id="scope-select" class="hidden">
+                        <option value="" {% if not scope %}selected{% endif %}>Tất cả</option>
+                        <option value="nearby" {% if scope == 'nearby' %}selected{% endif %}>Gần tôi</option>
+                        <option value="province" {% if scope == 'province' %}selected{% endif %}>Tỉnh/Thành</option>
+                    </select>
+
+                    <!-- Province/Ward Selects -->
+                    <div id="province-ward-wrapper" class="flex gap-2 {% if scope != 'province' %}hidden{% endif %}">
+                        <select name="province" id="province-select" 
+                                class="px-4 py-2 bg-gray-50 rounded-full text-sm border-0 outline-none"
+                                {% if scope != 'province' %}disabled{% endif %}>
+                            <option value="">Chọn tỉnh</option>
+                            {% if provinces %}
+                                {% for p in provinces %}
+                                    <option value="{{ p.code }}" {% if province == p.code %}selected{% endif %}>{{ p.name }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <select name="ward" id="ward-select" 
+                                class="px-4 py-2 bg-gray-50 rounded-full text-sm border-0 outline-none"
+                                {% if scope != 'province' %}disabled{% endif %}>
+                            <option value="">Chọn phường</option>
+                        </select>
+                    </div>
+
+                    <!-- Specialty Checkbox -->
+                    <label class="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full text-sm font-medium text-gray-700 cursor-pointer transition-colors">
+                        <input type="checkbox" name="specialty" value="1" {% if specialty %}checked{% endif %}
+                               class="w-4 h-4 text-brand-500 rounded">
+                        <span>Đặc sản</span>
+                    </label>
+                </div>
+
+                <!-- Search Button -->
+                <button type="submit" class="w-full bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white py-3 rounded-full font-semibold transition-all transform hover:scale-[1.02] shadow-lg">
+                    🔍 Tìm kiếm ngay
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- SEARCH BAR JAVASCRIPT -->
+<script>
+    // Autocomplete
+    const input = document.getElementById("search-input");
+    const suggestionsBox = document.getElementById("suggestions");
+
+    if (input && suggestionsBox) {
+        input.addEventListener("input", function () {
+            const q = this.value.trim();
+            if (!q) {
+                suggestionsBox.innerHTML = "";
+                suggestionsBox.classList.add('hidden');
+                return;
+            }
+
+            fetch("{% url 'autocomplete' %}?q=" + encodeURIComponent(q))
+                .then(res => res.json())
+                .then(data => {
+                    suggestionsBox.innerHTML = "";
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        data.suggestions.forEach(text => {
+                            const li = document.createElement("li");
+                            li.className = "px-4 py-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-700";
+                            li.textContent = text;
+                            li.onclick = () => {
+                                input.value = text;
+                                suggestionsBox.innerHTML = "";
+                                suggestionsBox.classList.add('hidden');
+                            };
+                            suggestionsBox.appendChild(li);
+                        });
+                        suggestionsBox.classList.remove('hidden');
+                    } else {
+                        suggestionsBox.classList.add('hidden');
+                    }
+                })
+                .catch(() => {
+                    suggestionsBox.innerHTML = "";
+                    suggestionsBox.classList.add('hidden');
+                });
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!suggestionsBox.contains(e.target) && e.target !== input) {
+                suggestionsBox.innerHTML = "";
+                suggestionsBox.classList.add('hidden');
+            }
+        });
+    }
+
+    // Location Dropdown Toggle
+    const locationDropdownBtn = document.getElementById("locationDropdownBtn");
+    const locationDropdown = document.getElementById("locationDropdown");
+
+    if (locationDropdownBtn && locationDropdown) {
+        locationDropdownBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            locationDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener("click", (e) => {
+            if (!locationDropdown.contains(e.target) && e.target !== locationDropdownBtn) {
+                locationDropdown.classList.add('hidden');
+            }
+        });
+    }
+
+    // Location Scope Logic
+    const scopeSelect = document.getElementById("scope-select");
+    const provinceSelect = document.getElementById("province-select");
+    const wardSelect = document.getElementById("ward-select");
+    const form = document.getElementById("main-search-form");
+    const locationLabel = document.getElementById("location-label");
+    const provinceWardWrapper = document.getElementById("province-ward-wrapper");
+    const scopeButtons = document.querySelectorAll(".location-scope-option");
+
+    function applyScopeUI(scope) {
+        if (!scopeSelect || !provinceSelect || !wardSelect || !provinceWardWrapper) return;
+
+        scopeSelect.value = scope;
+
+        if (scope === "nearby") {
+            provinceWardWrapper.classList.add("hidden");
+            provinceSelect.disabled = true;
+            wardSelect.disabled = true;
+            locationLabel.textContent = "Gần tôi";
+
+            // Get GPS location
+            if (navigator.geolocation && form) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    let latInput = document.querySelector("input[name='lat']");
+                    let lngInput = document.querySelector("input[name='lng']");
+
+                    if (!latInput) {
+                        latInput = document.createElement("input");
+                        latInput.type = "hidden";
+                        latInput.name = "lat";
+                        form.appendChild(latInput);
+                    }
+                    if (!lngInput) {
+                        lngInput = document.createElement("input");
+                        lngInput.type = "hidden";
+                        lngInput.name = "lng";
+                        form.appendChild(lngInput);
+                    }
+
+                    latInput.value = pos.coords.latitude;
+                    lngInput.value = pos.coords.longitude;
+                });
+            }
+        } else if (scope === "province") {
+            provinceWardWrapper.classList.remove("hidden");
+            provinceSelect.disabled = false;
+            wardSelect.disabled = false;
+            locationLabel.textContent = "Tỉnh/Thành";
+        } else {
+            provinceWardWrapper.classList.add("hidden");
+            provinceSelect.disabled = true;
+            wardSelect.disabled = true;
+            locationLabel.textContent = "Vị trí";
+        }
+
+        // Close dropdown after selection
+        if (locationDropdown) {
+            locationDropdown.classList.add('hidden');
+        }
+    }
+
+    // Scope button events
+    if (scopeButtons && scopeButtons.length > 0) {
+        scopeButtons.forEach(btn => {
+            btn.addEventListener("click", function () {
+                const s = this.dataset.scope || "";
+                applyScopeUI(s);
+            });
+        });
+    }
+
+    // Load wards when province changes
+    if (provinceSelect && wardSelect) {
+        provinceSelect.addEventListener("change", function () {
+            const provinceCode = this.value;
+            wardSelect.innerHTML = '<option value="">Chọn phường</option>';
+            
+            if (!provinceCode) return;
+
+            fetch("{% url 'get_wards' %}?province=" + encodeURIComponent(provinceCode))
+                .then(res => res.json())
+                .then(data => {
+                    wardSelect.innerHTML = '<option value="">Chọn phường</option>';
+                    if (data.wards) {
+                        data.wards.forEach(w => {
+                            const opt = document.createElement("option");
+                            opt.value = w.code;
+                            opt.textContent = w.name;
+                            wardSelect.appendChild(opt);
+                        });
+                    }
+                })
+                .catch(err => {
+                    console.error("Load wards error:", err);
+                });
+        });
+    }
+
+    // Initialize scope UI on page load
+    applyScopeUI("{{ scope|default:'' }}");
+</script>

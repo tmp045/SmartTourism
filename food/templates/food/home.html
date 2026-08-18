@@ -1,0 +1,173 @@
+{% extends 'food/base.html' %}
+{% load static %}
+
+{% block title %}FoodUS - Trang chủ{% endblock %}
+
+{% block content %}
+    <!-- HERO WITH SEARCH -->
+    {% include 'food/components/search_hero.html' %}
+
+    <!-- CATEGORIES SECTION -->
+    <section class="container mx-auto px-4 lg:px-8 py-16">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-10">Loại thức ăn phổ biến</h2>
+        <div class="grid grid-cols-3 md:grid-cols-6 gap-8">
+            {% for category in categories %}
+            <a href="{% url 'search' %}?q={{ category.name|urlencode }}"
+               class="flex flex-col items-center group cursor-pointer">
+
+                <div class="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden mb-4
+                            border-4 border-transparent group-hover:border-brand-500
+                            transition-all shadow-md">
+                    <img src="{% static category.icon %}"
+                         alt="{{ category.name }}"
+                         class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500">
+                </div>
+
+                <span class="font-semibold text-gray-800 group-hover:text-brand-600 transition-colors text-center">
+                    {{ category.name }}
+                </span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- FEATURED RESTAURANTS SECTION -->
+    <section class="container mx-auto px-4 lg:px-8 py-8">
+        <h2 class="text-2xl md:text-3xl font-bold text-gray-900 mb-10">Nhà hàng nổi bật</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {% for restaurant in restaurants %}
+            <div class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 group">
+                <div class="h-48 overflow-hidden relative">
+
+                    {% if restaurant.image %}
+                        <img src="{{ restaurant.image.url }}"
+                             alt="{{ restaurant.name }}"
+                             class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500">
+                    {% else %}
+                        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&h=400&fit=crop"
+                             alt="{{ restaurant.name }}"
+                             class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500">
+                    {% endif %}
+
+                    {# ❤️ NÚT TIM #}
+                    <div class="absolute top-3 left-3 z-10">
+                        {% if user.is_authenticated %}
+                            <button
+                                type="button"
+                                class="favorite-btn bg-white/90 backdrop-blur-sm w-9 h-9 rounded-full flex items-center justify-center shadow-sm hover:scale-105 transition"
+                                data-id="{{ restaurant.id }}"
+                                aria-label="Yêu thích"
+                            >
+                                {% if restaurant.id in favorite_ids %}
+                                    <!-- filled heart -->
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" style="color:#ef4444;">
+                                        <path d="M12 21s-7-4.35-9.33-8.28C.5 9.3 2.1 5.9 5.6 5.1c1.9-.4 3.8.3 5 1.8 1.2-1.5 3.1-2.2 5-1.8 3.5.8 5.1 4.2 2.93 7.62C19 16.65 12 21 12 21z"/>
+                                    </svg>
+                                {% else %}
+                                    <!-- outline heart -->
+                                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#111827;">
+                                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+                                    </svg>
+                                {% endif %}
+                            </button>
+                        {% else %}
+                            <a
+                              href="{% url 'account_login' %}?next={% url 'food:home' %}"
+                              class="bg-white/90 backdrop-blur-sm w-9 h-9 rounded-full flex items-center justify-center shadow-sm hover:scale-105 transition"
+                              aria-label="Đăng nhập để yêu thích"
+                            >
+                                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#111827;">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+                                </svg>
+                            </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 text-xs font-bold text-gray-800 shadow-sm">
+                        <svg class="w-3 h-3 text-yellow-500 fill-current" viewBox="0 0 20 20">
+                            <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                        </svg>
+                        {{ restaurant.rating }}
+                    </div>
+                </div>
+
+                <div class="p-5">
+                    <h3 class="font-bold text-lg text-gray-900 mb-1">{{ restaurant.name }}</h3>
+
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="flex text-yellow-500">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= restaurant.rating %}
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                                    </svg>
+                                {% else %}
+                                    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                                    </svg>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <span class="text-xs text-gray-500">• {{ restaurant.reviews.count }} reviews</span>
+                    </div>
+
+                    <p class="text-gray-500 text-sm mb-4 line-clamp-2 leading-relaxed">
+                        {{ restaurant.description|truncatewords:15 }}
+                    </p>
+
+                    <a href="{% url 'food:restaurant_detail' restaurant.id %}"
+                       class="block w-full py-2 text-center border border-brand-500 text-brand-600 rounded-full text-sm font-semibold hover:bg-brand-50 transition-colors">
+                        Xem thêm
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# JS: toggle favorite (POST) #}
+    <script>
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      const csrftoken = getCookie('csrftoken');
+
+      document.querySelectorAll('.favorite-btn').forEach(btn => {
+        btn.addEventListener('click', async function () {
+          const id = this.dataset.id;
+
+          const res = await fetch(`/restaurant/${id}/favorite/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken }
+          });
+
+          if (!res.ok) return;
+
+          const data = await res.json();
+
+          // đổi icon
+          this.innerHTML = data.is_favorite
+            ? `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" style="color:#ef4444;">
+                 <path d="M12 21s-7-4.35-9.33-8.28C.5 9.3 2.1 5.9 5.6 5.1c1.9-.4 3.8.3 5 1.8 1.2-1.5 3.1-2.2 5-1.8 3.5.8 5.1 4.2 2.93 7.62C19 16.65 12 21 12 21z"/>
+               </svg>`
+            : `<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#111827;">
+                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path>
+               </svg>`;
+        });
+      });
+    </script>
+{% endblock %}
